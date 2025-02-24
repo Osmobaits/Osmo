@@ -315,7 +315,7 @@ def delete_category(category_id):
     return jsonify({"message": "Category deleted successfully!"})
 
 @app.route("/product", methods=["POST"])
-def add_product():
+def add_warehouse_product():
     data = request.json
     
     if not data.get("name") or not isinstance(data.get("quantity"), int) or not isinstance(data.get("category_id"), int):
