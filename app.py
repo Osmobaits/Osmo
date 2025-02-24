@@ -85,7 +85,7 @@ def login():
     data = request.json
     if data.get("username") == ADMIN_USERNAME and data.get("password") == ADMIN_PASSWORD:
         session["user"] = ADMIN_USERNAME
-        return jsonify({"redirect": url_for("orders"), "message": "Login successful"})
+        return jsonify({"redirect": url_for("orders"), "message": "Login successful"})  # Przekierowanie do strony zamówień
     return jsonify({"message": "Invalid credentials"}), 401
 
 # Endpoint do wylogowania (GET)
