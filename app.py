@@ -85,7 +85,7 @@ def login():
     data = request.json
     if data.get("username") == ADMIN_USERNAME and data.get("password") == ADMIN_PASSWORD:
         session["user"] = ADMIN_USERNAME
-        return jsonify({"redirect": url_for("home"), "message": "Login successful"})
+        return jsonify({"redirect": url_for("orders"), "message": "Login successful"})
     return jsonify({"message": "Invalid credentials"}), 401
 
 # Endpoint do wylogowania (GET)
@@ -105,7 +105,15 @@ def home():
         active_orders = Order.query.filter_by(is_archived=False).all()
         return render_template('index1.html', username=session['user'], clients=clients, active_orders=active_orders)
     return redirect(url_for('login_page'))
-
+    
+@app.route('/orders')
+def orders():
+    if 'user' in session:
+        clients = Client.query.all()
+        active_orders = Order.query.filter_by(is_archived=False).all()
+        return render_template('index1.html', username=session['user'], clients=clients, active_orders=active_orders)
+    return redirect(url_for('login_page'))
+    
 @app.route('/add_client', methods=['POST'])
 def add_client():
     if 'user' not in session:
