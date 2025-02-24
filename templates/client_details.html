@@ -1,1 +1,125 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Szczegóły klienta: {{ client.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Szczegóły klienta: {{ client.name }}</h1>
+            <a href="{{ url_for('home') }}" class="btn btn-secondary">Powrót</a>
+        </div>
 
+        <!-- Formularz dodawania nowego zamówienia -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Dodaj nowe zamówienie</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('add_order', client_id=client.id) }}">
+                    <div class="mb-3">
+                        <label class="form-label">Data przyjęcia zamówienia:</label>
+                        <input type="date" name="order_date" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Dodaj zamówienie</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Zamówienia bieżące -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Zamówienia bieżące</h3>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for order in client.orders if not order.is_archived %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{{ url_for('order_details', order_id=order.id) }}">
+                                    Zamówienie z dnia {{ order.order_date.strftime('%Y-%m-%d') }}
+                                </a>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Zamówienia archiwalne -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Zamówienia archiwalne</h3>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for order in client.orders if order.is_archived %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                <a href="{{ url_for('order_details', order_id=order.id) }}">
+                                    Zamówienie z dnia {{ order.order_date.strftime('%Y-%m-%d') }}
+                                </a>
+                                <br>
+                                {% if order.invoice_number %}
+                                    <small class="text-success">Faktura wystawiona: {{ order.invoice_number }}</small>
+                                {% else %}
+                                    <small class="text-danger">Faktura do wystawienia</small>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <form method="post" action="{{ url_for('delete_archived_order', order_id=order.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć to zamówienie?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+
+        <!-- Formularz dodawania nowego produktu -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Dodaj nowy produkt</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('add_product', client_id=client.id) }}">
+                    <div class="mb-3">
+                        <label class="form-label">Nazwa produktu:</label>
+                        <input type="text" name="product_name" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Dodaj produkt</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Lista produktów klienta -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Lista produktów klienta</h3>
+            </div>
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for product in client.products %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <div>
+                                {{ product.name }}
+                            </div>
+                            <div>
+                                <form method="post" action="{{ url_for('delete_client_product', product_id=product.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć ten produkt?');">
+                                    <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
+                                </form>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
