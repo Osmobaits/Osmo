@@ -74,6 +74,12 @@ with app.app_context():
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "magazyn12"
 
+# Endpoint do wyświetlenia strony logowania (GET)
+@app.route('/login', methods=['GET'])
+def login_page():
+    return render_template('index.html')  # Użyj tego samego pliku HTML do logowania
+
+# Endpoint do obsługi logowania (POST)
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -82,10 +88,11 @@ def login():
         return jsonify({"redirect": url_for("home"), "message": "Login successful"})
     return jsonify({"message": "Invalid credentials"}), 401
 
-@app.route('/logout', methods=['POST'])
+# Endpoint do wylogowania (GET)
+@app.route('/logout', methods=['GET'])
 def logout():
     session.clear()
-    return jsonify({"message": "Logged out successfully!", "redirect": url_for("index")})
+    return redirect(url_for('login_page'))  # Przekieruj do strony logowania
 
 # --------------------------
 # Endpointy dla modułu zamówień
@@ -97,7 +104,7 @@ def home():
         clients = Client.query.all()
         active_orders = Order.query.filter_by(is_archived=False).all()
         return render_template('index1.html', username=session['user'], clients=clients, active_orders=active_orders)
-    return render_template('index1.html')
+    return redirect(url_for('login_page'))
 
 @app.route('/add_client', methods=['POST'])
 def add_client():
