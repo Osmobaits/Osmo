@@ -1,1 +1,170 @@
+<!doctype html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Szczegóły zamówienia: {{ order.client.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Szczegóły zamówienia: {{ order.client.name }}</h1>
+            <a href="{{ url_for('client_details', client_id=order.client.id) }}" class="btn btn-secondary">Powrót</a>
+        </div>
 
+        <!-- Wyświetl datę przyjęcia zamówienia -->
+        <div class="mb-4">
+            <p><strong>Data przyjęcia zamówienia:</strong> 
+                {% if order.order_date %}
+                    {{ order.order_date.strftime('%Y-%m-%d') }}
+                {% else %}
+                    Brak danych
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Formularz aktualizacji daty wysyłki -->
+        <div class="card shadow mb-4">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Aktualizuj datę wysyłki</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('update_shipment_date', order_id=order.id) }}">
+                    <div class="mb-3">
+                        <label class="form-label">Nowa data wysyłki:</label>
+                        <input type="date" name="shipment_date" class="form-control" value="{{ order.shipment_date.strftime('%Y-%m-%d') if order.shipment_date else '' }}">
+                    </div>
+                    <button type="submit" class="btn btn-warning">Zaktualizuj datę</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Przycisk "Zakończ zamówienie" -->
+        {% if not order.is_archived %}
+            <div class="mb-4">
+                <button id="completeOrder" class="btn btn-success">Zakończ zamówienie i dodaj do archiwum</button>
+            </div>
+        {% endif %}
+
+        <!-- Formularz edycji numeru faktury (tylko dla zamówień archiwalnych) -->
+        {% if order.is_archived %}
+            <div class="card shadow mb-4">
+                <div class="card-header bg-white">
+                    <h3 class="mb-0">Numer faktury</h3>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('update_invoice_number', order_id=order.id) }}">
+                        <div class="mb-3">
+                            <label class="form-label">Numer faktury:</label>
+                            <input type="text" name="invoice_number" class="form-control" value="{{ order.invoice_number if order.invoice_number else '' }}">
+                        </div>
+                        <button type="submit" class="btn btn-warning">Zaktualizuj numer faktury</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+
+        <!-- Tabela produktów -->
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h3 class="mb-0">Produkty w zamówieniu</h3>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Nazwa produktu</th>
+                            <th>Zamówiono</th>
+                            <th>Spakowano</th>
+                            <th>Akcje</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for product in order.products %}
+                            <tr>
+                                <td>{{ product.name }}</td>
+                                <td class="editable" data-product-id="{{ product.id }}" data-field="quantity_ordered">
+                                    {{ product.quantity_ordered }}
+                                </td>
+                                <td class="editable" data-product-id="{{ product.id }}" data-field="quantity_packed">
+                                    {{ product.quantity_packed }}
+                                </td>
+                                <td>
+                                    <form method="post" action="{{ url_for('delete_order_product', product_id=product.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć ten produkt?');">
+                                        <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Funkcja do edycji komórek tabeli
+        document.querySelectorAll('.editable').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const productId = cell.getAttribute('data-product-id');
+                const field = cell.getAttribute('data-field');
+                const currentValue = cell.innerText.trim();
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.value = currentValue;
+                input.classList.add('form-control', 'w-auto', 'd-inline');
+
+                cell.innerHTML = '';
+                cell.appendChild(input);
+                input.focus();
+
+                input.addEventListener('blur', () => {
+                    const newValue = input.value;
+                    cell.innerText = newValue;
+
+                    // Wysyłanie danych do serwera
+                    fetch(`/update_product_quantity/${productId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ [field]: newValue }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.success) {
+                            alert('Wystąpił błąd podczas aktualizacji.');
+                        }
+                    });
+                });
+
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        input.blur();
+                    }
+                });
+            });
+        });
+
+        // Przycisk "Zakończ zamówienie"
+        document.getElementById('completeOrder')?.addEventListener('click', () => {
+            if (confirm('Czy na pewno chcesz zakończyć to zamówienie i dodać je do archiwum?')) {
+                fetch(`/complete_order/{{ order.id }}`, {
+                    method: 'POST',
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = "{{ url_for('client_details', client_id=order.client.id) }}";  // Przekieruj do szczegółów klienta
+                    } else {
+                        alert('Wystąpił błąd podczas zakończenia zamówienia.');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
