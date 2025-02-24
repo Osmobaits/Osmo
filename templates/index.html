@@ -15,7 +15,6 @@
             background-color: #f8f9fa;
         }
 
-        /* Dostosowanie przycisków na urządzeniach mobilnych */
         @media (max-width: 767px) {
             .btn-sm {
                 padding: 8px 12px;
@@ -28,7 +27,6 @@
             }
         }
 
-        /* Styl dla nawigacji */
         .nav-container {
             display: flex;
             justify-content: space-between;
@@ -120,10 +118,9 @@
 
         // Funkcja wylogowania
         async function logout() {
-            const response = await fetch('/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-            const data = await response.json();
-            if (data.redirect) {
-                window.location.href = data.redirect;
+            const response = await fetch('/logout', { method: 'GET' });
+            if (response.ok) {
+                window.location.href = "/login";
             }
         }
 
