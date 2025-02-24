@@ -103,7 +103,7 @@ def home():
     if 'user' in session:
         clients = Client.query.all()
         active_orders = Order.query.filter_by(is_archived=False).all()
-        return render_template('index1.html', username=session['user'], clients=clients, active_orders=active_orders)
+        return render_template('index.html', username=session['user'], clients=clients, active_orders=active_orders)
     return redirect(url_for('login_page'))
     
 @app.route('/orders')
