@@ -49,6 +49,7 @@
 <body class="container mt-4">
 
     {% if not logged_in %}
+        <!-- Formularz logowania -->
         <div class="d-flex justify-content-center align-items-center vh-100">
             <div class="card p-4 shadow">
                 <h3 class="text-center">Login</h3>
@@ -64,14 +65,14 @@
     {% else %}
         <!-- Nawigacja -->
         <div class="nav-container">
-            <h1>OSMO Baits Warehouse Management</h1>
+            <h1 class="text-center">OSMO Baits Warehouse Management</h1>
             <div class="nav-buttons">
                 <a href="/index1.html" class="btn btn-primary">Przejdź do Zamówień</a>
                 <button class="btn btn-danger" onclick="logout()">Logout</button>
             </div>
         </div>
 
-        <!-- Zawartość modułu magazynu -->
+        <!-- Sekcja kategorii -->
         <div class="row mt-4">
             <div class="col-md-6">
                 <h3>Categories</h3>
@@ -82,13 +83,14 @@
                 <ul id="category-list" class="list-group"></ul>
             </div>
 
+            <!-- Sekcja produktów -->
             <div class="col-md-6">
                 <h3>Products</h3>
                 <div class="input-group mb-3">
                     <input id="name" class="form-control" placeholder="Product Name" required>
                     <input id="quantity" class="form-control" type="number" placeholder="Quantity" required>
                     <select id="category-select" class="form-select"></select>
-                    <button class="btn btn-success" onclick="addProduct()">Add</button>
+                    <button class="btn btn-success" onclick="addWarehouseProduct()">Add</button>
                 </div>
                 <div id="product-list"></div>
             </div>
@@ -96,6 +98,7 @@
     {% endif %}
 
     <script>
+        // Funkcja logowania
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
@@ -115,6 +118,7 @@
             }
         }
 
+        // Funkcja wylogowania
         async function logout() {
             const response = await fetch('/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
             const data = await response.json();
@@ -123,6 +127,7 @@
             }
         }
 
+        // Funkcja pobierająca kategorie
         async function fetchCategories() {
             const response = await fetch('/categories');
             let categories = await response.json();
@@ -148,6 +153,7 @@
                 </li>`).join('');
         }
 
+        // Funkcja pobierająca produkty
         async function fetchProducts() {
             const response = await fetch('/products');
             if (!response.ok) {
@@ -191,11 +197,7 @@
                 </div>`).join('');
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            fetchCategories();
-            fetchProducts();
-        });
-
+        // Funkcja dodająca kategorię
         async function addCategory() {
             const name = document.getElementById('category-name').value;
             if (!name) return alert("Category name cannot be empty!");
@@ -208,63 +210,21 @@
             fetchCategories();
         }
 
-        async function deleteCategory(id) {
-            if (confirm("Are you sure you want to delete this category?")) {
-                await fetch(`/category/${id}`, { method: 'DELETE' });
-                fetchCategories();
-                fetchProducts();
-            }
-        }
-
-        async function deleteProduct(id) {
-            if (confirm("Are you sure you want to delete this product?")) {
-                await fetch(`/product/${id}`, { method: 'DELETE' });
-                fetchProducts();
-            }
-        }
-
-        async function editProduct(id, name, quantity, categoryId) {
-            const newName = prompt("Edit product name:", decodeURIComponent(name));
-            const newQuantity = prompt("Edit quantity:", quantity);
-            const newCategoryId = prompt("Edit category ID:", categoryId);
-
-            if (newName && newQuantity && newCategoryId) {
-                await fetch(`/product/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newName, quantity: parseInt(newQuantity), category_id: parseInt(newCategoryId) })
-                });
-
-                fetchProducts();
-            }
-        }
-
-        async function editCategory(id, name) {
-            const newName = prompt("Edit category name:", decodeURIComponent(name));
-            if (newName) {
-                await fetch(`/category/${id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: newName })
-                });
-                fetchCategories();
-            }
-        }
-
-        async function addProduct() {
+        // Funkcja dodająca produkt do magazynu
+        async function addWarehouseProduct() {
             const name = document.getElementById('name').value;
             const quantity = parseInt(document.getElementById('quantity').value);
-            const category_id = parseInt(document.getElementById('category-select').value);
+            const categoryId = parseInt(document.getElementById('category-select').value);
 
-            if (!name || isNaN(quantity) || isNaN(category_id)) {
+            if (!name || isNaN(quantity) || isNaN(categoryId)) {
                 alert("All fields must be filled correctly!");
                 return;
             }
 
-            const response = await fetch('/product', {
+            const response = await fetch('/add_warehouse_product', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, quantity, category_id })
+                body: JSON.stringify({ name, quantity, category_id: categoryId })
             });
 
             if (response.ok) {
@@ -275,6 +235,15 @@
                 alert("Failed to add product.");
             }
         }
+
+        // Inicjalizacja danych po załadowaniu strony
+        document.addEventListener("DOMContentLoaded", function () {
+            {% if logged_in %}
+                fetchCategories();
+                fetchProducts();
+            {% endif %}
+        });
     </script>
+
 </body>
 </html>
