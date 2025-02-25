@@ -65,7 +65,8 @@ class Product(db.Model):
 # --------------------------
 
 with app.app_context():
-    db.create_all()
+    db.drop_all()  # Usuń wszystkie tabele
+    db.create_all()  # Utwórz tabele na podstawie modeli
 
 # --------------------------
 # Wspólny system logowania
