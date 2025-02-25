@@ -72,33 +72,37 @@
             </div>
             <div class="card-body">
                 <table class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>Nazwa produktu</th>
-                            <th>Zamówiono</th>
-                            <th>Spakowano</th>
-                            <th>Akcje</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for product in order.products %}
-                            <tr>
-                                <td>{{ product.name }}</td>
-                                <td class="editable" data-product-id="{{ product.id }}" data-field="quantity_ordered">
-                                    {{ product.quantity_ordered }}
-                                </td>
-                                <td class="editable" data-product-id="{{ product.id }}" data-field="quantity_packed">
-                                    {{ product.quantity_packed }}
-                                </td>
-                                <td>
-                                    <form method="post" action="{{ url_for('delete_order_product', product_id=product.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć ten produkt?');">
-                                        <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+    <thead>
+        <tr>
+            <th>Nazwa produktu</th>
+            <th>Zamówiono</th>
+            <th>Spakowano</th>
+            <th>Wykulane</th>  <!-- Nowa kolumna -->
+            <th>Akcje</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for product in order.products %}
+            <tr>
+                <td>{{ product.name }}</td>
+                <td class="editable" data-product-id="{{ product.id }}" data-field="quantity_ordered">
+                    {{ product.quantity_ordered }}
+                </td>
+                <td class="editable" data-product-id="{{ product.id }}" data-field="quantity_packed">
+                    {{ product.quantity_packed }}
+                </td>
+                <td class="editable" data-product-id="{{ product.id }}" data-field="wykulane">
+                    {{ product.wykulane }}  <!-- Wyświetl wartość "Wykulane" -->
+                </td>
+                <td>
+                    <form method="post" action="{{ url_for('delete_order_product', product_id=product.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć ten produkt?');">
+                        <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
             </div>
         </div>
     </div>
