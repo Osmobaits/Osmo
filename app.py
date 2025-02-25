@@ -45,7 +45,6 @@ class OrderProduct(db.Model):
     quantity_packed = db.Column(db.Integer, nullable=False, default=0)
     wykulane = db.Column(db.Integer, nullable=False, default=0)  # Nowa kolumna
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
-
 # --------------------------
 # Modele dla modułu magazynu
 # --------------------------
