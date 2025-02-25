@@ -65,7 +65,6 @@ class Product(db.Model):
 # --------------------------
 
 with app.app_context():
-    db.drop_all()  # Usuń wszystkie tabele
     db.create_all()  # Utwórz tabele na podstawie modeli
 
 # --------------------------
