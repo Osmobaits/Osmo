@@ -43,6 +43,7 @@ class OrderProduct(db.Model):
     name = db.Column(db.String(100), nullable=False)
     quantity_ordered = db.Column(db.Integer, nullable=False, default=0)
     quantity_packed = db.Column(db.Integer, nullable=False, default=0)
+    wykulane = db.Column(db.Integer, nullable=False, default=0)  # Nowa kolumna
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
 
 # --------------------------
@@ -280,6 +281,20 @@ def delete_archived_order(order_id):
     db.session.commit()
 
     return redirect(url_for('client_details', client_id=client_id))
+
+@app.route('/update_wykulane/<int:product_id>', methods=['POST'])
+def update_wykulane(product_id):
+    if 'user' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    product = OrderProduct.query.get_or_404(product_id)
+    data = request.get_json()
+
+    if 'wykulane' in data:
+        product.wykulane = int(data['wykulane'])  # Zaktualizuj wartość "Wykulane"
+
+    db.session.commit()
+    return jsonify({'success': True})
 
 # --------------------------
 # Endpointy dla modułu magazynu
