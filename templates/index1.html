@@ -13,60 +13,23 @@
             font-size: 2.5rem;
             font-weight: bold;
         }
-
-        .nav-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .nav-container h1 {
-            margin: 0;
-        }
-
-        .nav-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        /* Responsywność dla małych ekranów */
-        @media (max-width: 767px) {
-            .center-text {
-                font-size: 2rem;
-            }
-
-            .nav-container {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .nav-buttons {
-                margin-top: 10px;
-            }
-
-            .logout-button {
-                position: static;
-                margin-top: 10px;
-            }
-
-            .card {
-                margin-bottom: 20px;
-            }
+        .logout-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
     </style>
 </head>
 <body class="bg-light">
     <div class="container py-5">
         {% if username %}
-            <!-- Nawigacja -->
-            <div class="nav-container">
-                <h1 class="center-text">OSMO Baits Order Management</h1>
-                <div class="nav-buttons">
-                   <a href="{{ url_for('home') }}" class="btn btn-primary">Przejdź do Magazynu</a>
-                    <a href="{{ url_for('logout') }}" class="btn btn-danger">Wyloguj</a>
-                </div>
+            <!-- Przycisk "Wyloguj" w prawym górnym rogu -->
+            <div class="logout-button">
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Wyloguj</a>
             </div>
+
+            <!-- Nazwa systemu wyśrodkowana -->
+            <h1 class="center-text">OSMO Baits Order Management</h1>
 
             <!-- Lista klientów -->
             <div class="card shadow mb-4">
@@ -133,14 +96,21 @@
                     <h2 class="mb-0">Logowanie</h2>
                 </div>
                 <div class="card-body">
-                    <form id="loginForm">
+                    <form method="post">
                         <div class="mb-3">
                             <label class="form-label">Login:</label>
-                            <input type="text" id="username" class="form-control" required>
+                            <input type="text" name="login" class="form-control" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Hasło:</label>
-                            <input type="password" id="password" class="form-control" required>
+                            <input type="password" name="password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Wybierz moduł:</label>
+                            <select name="module" class="form-control" required>
+                                <option value="orders">Zamówienia</option>
+                                <option value="warehouse">Magazyn</option>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn-success w-100">Zaloguj</button>
                     </form>
@@ -149,30 +119,6 @@
                     {% endif %}
                 </div>
             </div>
-
-            <script>
-                // Funkcja logowania
-                document.getElementById('loginForm').addEventListener('submit', function (e) {
-                    e.preventDefault();
-
-                    const username = document.getElementById('username').value;
-                    const password = document.getElementById('password').value;
-
-                    fetch('/login', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.redirect) {
-                            window.location.href = data.redirect;  // Przekieruj po udanym logowaniu
-                        } else {
-                            alert("Login failed: " + data.message);  // Wyświetl błąd logowania
-                        }
-                    });
-                });
-            </script>
         {% endif %}
     </div>
 
