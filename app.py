@@ -114,8 +114,8 @@ def orders():
     
 @app.route('/add_client', methods=['POST'])
 def add_client():
-    if 'user' not in session:
-        return redirect(url_for('home'))
+    if 'user' not in session:  # Sprawdź, czy użytkownik jest zalogowany
+        return redirect(url_for('login_page'))  # Przekieruj do logowania, jeśli nie
 
     name = request.form.get('name')
     if name:
@@ -123,7 +123,7 @@ def add_client():
         db.session.add(new_client)
         db.session.commit()
 
-    return redirect(url_for('home'))
+    return redirect(url_for('orders'))  # Przekieruj z powrotem do listy zamówień
 
 @app.route('/delete_client/<int:client_id>', methods=['POST'])
 def delete_client(client_id):
