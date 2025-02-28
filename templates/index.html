@@ -57,6 +57,13 @@
                 <div class="mb-3">
                     <input id="password" type="password" class="form-control" placeholder="Password">
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Wybierz moduł:</label>
+                    <select id="module" class="form-control">
+                        <option value="orders">Zamówienia</option>
+                        <option value="warehouse">Magazyn</option>
+                    </select>
+                </div>
                 <button class="btn btn-primary w-100" onclick="login()">Login</button>
             </div>
         </div>
@@ -65,7 +72,6 @@
         <div class="nav-container">
             <h1 class="text-center">OSMO Baits Warehouse Management</h1>
             <div class="nav-buttons">
-                <a href="{{ url_for('orders') }}" class="btn btn-primary">Przejdź do Zamówień</a>
                 <button class="btn btn-danger" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -100,11 +106,12 @@
         async function login() {
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
+            const module = document.getElementById('module').value;
 
             const response = await fetch('/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
+                body: JSON.stringify({ username, password, module })
             });
 
             const data = await response.json();
