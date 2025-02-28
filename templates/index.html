@@ -103,25 +103,25 @@
 
     <script>
         // Funkcja logowania
-        async function login() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const module = document.getElementById('module').value;
+       async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const module = document.getElementById('module').value;
 
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password, module })
-            });
+    const response = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, module })
+    });
 
-            const data = await response.json();
+    const data = await response.json();
 
-            if (response.ok) {
-                window.location.href = data.redirect;
-            } else {
-                alert("Login failed: " + data.message);
-            }
-        }
+    if (response.ok) {
+        window.location.href = data.redirect;  // Przekieruj do odpowiedniego modułu
+    } else {
+        alert("Login failed: " + data.message);
+    }
+}
 
         // Funkcja wylogowania
         async function logout() {
