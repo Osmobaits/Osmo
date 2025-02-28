@@ -41,9 +41,9 @@ class ClientProduct(db.Model):
 class OrderProduct(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    quantity_ordered = db.Column(db.Integer, nullable=False, default=0)
-    quantity_packed = db.Column(db.Integer, nullable=False, default=0)
-    wykulane = db.Column(db.Integer, nullable=False, default=0)  # Nowa kolumna
+    quantity_ordered = db.Column(db.Integer, nullable=False, default=0)  # Zamówiono
+    wykulane = db.Column(db.Integer, nullable=False, default=0)  # Wykulane
+    quantity_packed = db.Column(db.Integer, nullable=False, default=0)  # Spakowano
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
 # --------------------------
 # Modele dla modułu magazynu
