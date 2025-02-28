@@ -125,17 +125,18 @@ def add_client():
 
     return redirect(url_for('orders'))  # Przekieruj z powrotem do listy zamówień
 
+
 @app.route('/delete_client/<int:client_id>', methods=['POST'])
 def delete_client(client_id):
-    if 'user' not in session:
-        return redirect(url_for('home'))
+    if 'user' not in session:  # Sprawdź, czy użytkownik jest zalogowany
+        return redirect(url_for('login_page'))  # Przekieruj do logowania, jeśli nie
 
     client = Client.query.get_or_404(client_id)
     db.session.delete(client)
     db.session.commit()
 
-    return redirect(url_for('home'))
-
+    return redirect(url_for('orders'))  # Przekieruj z powrotem do listy zamówień
+    
 @app.route('/client/<int:client_id>')
 def client_details(client_id):
     client = Client.query.get_or_404(client_id)
