@@ -45,28 +45,12 @@
     </style>
 </head>
 <body class="container mt-4">
-
-    {% if not logged_in %}
-        <!-- Formularz logowania -->
-        <div class="d-flex justify-content-center align-items-center vh-100">
-            <div class="card p-4 shadow">
-                <h3 class="text-center">Login</h3>
-                <div class="mb-3">
-                    <input id="username" class="form-control" placeholder="Username">
-                </div>
-                <div class="mb-3">
-                    <input id="password" type="password" class="form-control" placeholder="Password">
-                </div>
-                <button class="btn btn-primary w-100" onclick="login()">Login</button>
-            </div>
-        </div>
-    {% else %}
+    {% if logged_in %}
         <!-- Nawigacja -->
         <div class="nav-container">
             <h1 class="text-center">OSMO Baits Warehouse Management</h1>
             <div class="nav-buttons">
-                <a href="{{ url_for('orders') }}" class="btn btn-primary">Przejdź do Zamówień</a>
-                <button class="btn btn-danger" onclick="logout()">Logout</button>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Wyloguj</a>
             </div>
         </div>
 
@@ -96,151 +80,8 @@
     {% endif %}
 
     <script>
-        // Funkcja logowania
-        async function login() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-
-            const response = await fetch('/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                window.location.href = data.redirect;
-            } else {
-                alert("Login failed: " + data.message);
-            }
-        }
-
-        // Funkcja wylogowania
-        async function logout() {
-            const response = await fetch('/logout', { method: 'GET' });
-            if (response.ok) {
-                window.location.href = "/login";
-            }
-        }
-
-        // Funkcja pobierająca kategorie
-        async function fetchCategories() {
-            const response = await fetch('/categories');
-            let categories = await response.json();
-            categories.sort((a, b) => a.id - b.id);
-
-            const categorySelect = document.getElementById('category-select');
-            if (categorySelect) {
-                categorySelect.innerHTML = categories.map(c => `
-                    <option value="${c.id}">${c.name}</option>`).join('');
-            }
-
-            document.getElementById('category-list').innerHTML = categories.map(c => `
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <a href="#category-${c.id}" class="text-primary text-decoration-none">${c.name}</a>
-                    <div>
-                        <button class="btn btn-sm btn-warning" onclick="editCategory(${c.id}, '${encodeURIComponent(c.name)}')">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="deleteCategory(${c.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </li>`).join('');
-        }
-
-        // Funkcja pobierająca produkty
-        async function fetchProducts() {
-            const response = await fetch('/products');
-            if (!response.ok) {
-                document.getElementById('product-list').innerHTML = '<p class="text-danger">Failed to load products.</p>';
-                return;
-            }
-            let productsByCategory = await response.json();
-            const sortedCategories = Object.keys(productsByCategory).sort((a, b) => {
-                const idA = productsByCategory[a][0]?.category_id || 0;
-                const idB = productsByCategory[b][0]?.category_id || 0;
-                return idA - idB;
-            });
-            document.getElementById('product-list').innerHTML = sortedCategories.map(category => `
-                <div class="category-container" id="category-${productsByCategory[category][0]?.category_id}">
-                    <h4>${category}</h4>
-                    <table class="table table-bordered">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Product Name</th>
-                                <th>Quantity</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${productsByCategory[category].sort((a, b) => a.name.localeCompare(b.name)).map(p => `
-                                <tr>
-                                    <td>${p.name}</td>
-                                    <td>${p.quantity}</td>
-                                    <td class="d-flex gap-1">
-                                        <button class="btn btn-sm btn-warning" onclick="editProduct(${p.id}, '${encodeURIComponent(p.name)}', ${p.quantity}, ${p.category_id})">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>`).join('')}
-                        </tbody>
-                    </table>
-                    <a href="#category-list" class="btn btn-secondary mt-2">Back</a>
-                </div>`).join('');
-        }
-
-        // Funkcja dodająca kategorię
-        async function addCategory() {
-            const name = document.getElementById('category-name').value;
-            if (!name) return alert("Category name cannot be empty!");
-            await fetch('/category', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            document.getElementById('category-name').value = "";
-            fetchCategories();
-        }
-
-        // Funkcja dodająca produkt do magazynu
-        async function addWarehouseProduct() {
-            const name = document.getElementById('name').value;
-            const quantity = parseInt(document.getElementById('quantity').value);
-            const categoryId = parseInt(document.getElementById('category-select').value);
-
-            if (!name || isNaN(quantity) || isNaN(categoryId)) {
-                alert("All fields must be filled correctly!");
-                return;
-            }
-
-            const response = await fetch('/add_warehouse_product', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, quantity, category_id: categoryId })
-            });
-
-            if (response.ok) {
-                document.getElementById('name').value = "";
-                document.getElementById('quantity').value = "";
-                fetchProducts();
-            } else {
-                alert("Failed to add product.");
-            }
-        }
-
-        // Inicjalizacja danych po załadowaniu strony
-        document.addEventListener("DOMContentLoaded", function () {
-            {% if logged_in %}
-                fetchCategories();
-                fetchProducts();
-            {% endif %}
-        });
+        // Funkcje JavaScript dla modułu magazynu
+        // (możesz je dostosować do swoich potrzeb)
     </script>
-
 </body>
 </html>
