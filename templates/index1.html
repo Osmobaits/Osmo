@@ -1,3 +1,4 @@
+<!-- templates/index1.html -->
 <!doctype html>
 <html lang="pl">
 <head>
@@ -6,7 +7,8 @@
     <title>OSMO Baits Order Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        .center-text {
+        /* ... (Twój istniejący CSS) ... */
+         .center-text {
             text-align: center;
             margin-top: 20px;
             margin-bottom: 40px;
@@ -58,7 +60,7 @@
 </head>
 <body class="bg-light">
     <div class="container py-5">
-        {% if username %}
+        {% if 'user' in session %}
             <!-- Nawigacja -->
             <div class="nav-container">
                 <h1 class="center-text">OSMO Baits Order Management</h1>
@@ -126,7 +128,7 @@
                 </div>
             </div>
         {% else %}
-            <!-- Formularz logowania -->
+            <!-- Formularz logowania (tylko, jeśli użytkownik nie jest zalogowany) -->
             <div class="card shadow mx-auto" style="max-width: 400px;">
                 <div class="card-header bg-white">
                     <h2 class="mb-0">Logowanie</h2>
@@ -148,9 +150,8 @@
                     {% endif %}
                 </div>
             </div>
-
             <script>
-                // Funkcja logowania
+            // Funkcja logowania (dostosowana do braku wyboru modułu)
                 document.getElementById('loginForm').addEventListener('submit', function (e) {
                     e.preventDefault();
 
@@ -160,14 +161,14 @@
                     fetch('/login', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ username, password }),
+                        body: JSON.stringify({ username, password }), // Bez modułu
                     })
                     .then(response => response.json())
                     .then(data => {
                         if (data.redirect) {
-                            window.location.href = data.redirect;  // Przekieruj po udanym logowaniu
+                            window.location.href = data.redirect;
                         } else {
-                            alert("Login failed: " + data.message);  // Wyświetl błąd logowania
+                            alert("Login failed: " + data.message);
                         }
                     });
                 });
