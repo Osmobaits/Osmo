@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Błąd</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+        .container {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Wystąpił błąd</h1>
+        {% if error %}
+            <p class="alert alert-danger">{{ error }}</p>
+        {% else %}
+            <p class="alert alert-danger">Przepraszamy, wystąpił nieoczekiwany błąd.</p>
+        {% endif %}
+        <a href="{{ url_for('home') }}" class="btn btn-primary">Wróć do strony głównej</a>
+    </div>
+</body>
+</html>
