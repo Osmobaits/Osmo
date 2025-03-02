@@ -69,9 +69,15 @@
             <div class="nav-container">
                 <h1 class="center-text">OSMO Baits Order Management</h1>
                 <div class="nav-buttons">
-                    <a href="{{ url_for('logout') }}" class="btn btn-danger">Wyloguj</a>
-                     <a href="{{ url_for('change_password') }}" class="btn btn-warning">Zmień Hasło</a>
-                     <!-- index1.html (lub inna strona) -->
+                    ```html
+<div class="nav-buttons">
+  {% if session.get('user') == admin_username %}
+    <a href="{{ url_for('add_user') }}" class="btn btn-success">Dodaj użytkownika</a>
+  {% endif %}
+  <a href="{{ url_for('change_password') }}" class = "btn btn-warning">Zmień Hasło</a>
+  <a href="{{ url_for('logout') }}" class="btn btn-danger">Wyloguj</a>
+</div>
+```
  {% if session.get('user') == os.environ.get("ADMIN_USERNAME") %}
      <a href="{{ url_for('add_user') }}" class = "btn btn-success">Dodaj użytkownika</a>
  {% endif %}
