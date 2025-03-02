@@ -374,7 +374,11 @@ def orders():
     client_has_active_order = {}
     for client in clients:
         client_has_active_order[client.id] = has_active_order(client.id)
-    return render_template('index1.html', clients=clients, active_orders=active_orders, client_has_active_order=client_has_active_order)
+
+    # Pobierz ADMIN_USERNAME i przekaż do szablonu:
+    admin_username = os.environ.get("ADMIN_USERNAME")
+    return render_template('index1.html', clients=clients, active_orders=active_orders,
+                           client_has_active_order=client_has_active_order, admin_username=admin_username)
 
 @app.route('/add_client', methods=['POST'])
 @login_required
