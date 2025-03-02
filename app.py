@@ -410,12 +410,11 @@ def update_shipment_date(order_id):
 @app.route('/complete_order/<int:order_id>', methods=['POST'])
 @login_required
 def complete_order(order_id):
-  try:
-    complete_order(order_id)
+    order = Order.query.get_or_404(order_id)  # Bezpośrednie użycie SQLAlchemy
+    order.is_archived = True
+    db.session.commit()
+
     return jsonify({'success': True})
-  except Exception as e:
-      print(f"Error complete order: {e}")
-      return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/update_invoice_number/<int:order_id>', methods=['POST'])
 @login_required
