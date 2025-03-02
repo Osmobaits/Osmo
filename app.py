@@ -4,16 +4,16 @@ from datetime import datetime
 import os
 from functools import wraps
 from flask_bcrypt import Bcrypt
-from sqlalchemy.exc import SQLAlchemyError, OperationalError  # Importuj potrzebne wyjątki
+from sqlalchemy.exc import SQLAlchemyError, OperationalError
 import logging
 
 # --- Inicjalizacja Aplikacji Flask ---
 app = Flask(__name__, template_folder="templates")
 
 # --- Konfiguracja Logowania ---
-app.logger.setLevel(logging.INFO)  # Ustaw poziom logowania (INFO, DEBUG, WARNING, ERROR, CRITICAL)
-handler = logging.FileHandler('app.log')  # Zapisuj logi do pliku app.log
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') # Format logów
+app.logger.setLevel(logging.INFO)
+handler = logging.FileHandler('app.log')
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 handler.setFormatter(formatter)
 app.logger.addHandler(handler)
 
@@ -22,9 +22,9 @@ app.secret_key = os.environ.get('SECRET_KEY')
 if not app.secret_key:
     import secrets
     app.secret_key = secrets.token_urlsafe(32)
-    app.logger.warning("WARNING: SECRET_KEY not found in environment. Using randomly generated key. INSECURE!")
+    app.logger.warning("WARNING: SECRET_KEY not found in environment.  Using randomly generated key.  INSECURE!")
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://magazyn_user:FH1mT4UHJvVrqmXXfQz6koc6FnVB3szQ@dpg-cuovb9ggph6c73dqpvc0-a/magazyn" # Twoje URI
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://magazyn_user:FH1mT4UHJvVrqmXXfQz6koc6FnVB3szQ@dpg-cuovb9ggph6c73dqpvc0-a/magazyn"  # Twoje URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -59,7 +59,7 @@ class OrderProduct(db.Model):
     quantity_packed = db.Column(db.Integer, nullable=False, default=0)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
 
-class User(db.Model):  # Dodaj model User
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
@@ -69,32 +69,6 @@ class User(db.Model):  # Dodaj model User
 
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)
-
-
-# --- Inicjalizacja Bazy Danych i Tworzenie Użytkownika ---
-with app.app_context():
-    try:
-        db.create_all()
-        app.logger.info("Database tables created successfully.")
-
-        # Sprawdź, czy użytkownik admin już istnieje (na podstawie zmiennych środowiskowych)
-        admin_username = os.environ.get('ADMIN_USERNAME')
-        admin_password = os.environ.get('ADMIN_PASSWORD')
-
-        if admin_username and admin_password:
-            existing_user = get_user_by_username(admin_username) #używamy funkcji
-            if not existing_user:
-                create_user(admin_username, admin_password) #używamy funkcji
-                app.logger.info(f"Admin user '{admin_username}' created.")
-            else:
-                app.logger.info(f"Admin user '{admin_username}' already exists.")
-        else:
-            app.logger.warning("ADMIN_USERNAME or ADMIN_PASSWORD environment variables not set.  Admin user not created.")
-
-    except OperationalError as e:
-        app.logger.error(f"Database initialization error: {e}")
-        print(f"Database initialization error: {e}")  # Wypisz do konsoli w razie problemów z loggerem
-
 
 # --- Funkcje Pomocnicze (Data Access - tymczasowo w app.py) ---
 
@@ -318,6 +292,31 @@ def change_user_password(username, new_password):
         app.logger.error(f"Error changing password for user {username}: {e}")
         raise
 
+# --- Inicjalizacja Bazy Danych i Tworzenie Użytkownika ---
+with app.app_context():
+    try:
+        db.create_all()
+        app.logger.info("Database tables created successfully.")
+
+        # Sprawdź, czy użytkownik admin już istnieje (na podstawie zmiennych środowiskowych)
+        admin_username = os.environ.get('ADMIN_USERNAME')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+
+        if admin_username and admin_password:
+            existing_user = get_user_by_username(admin_username)
+            if not existing_user:
+                create_user(admin_username, admin_password)
+                app.logger.info(f"Admin user '{admin_username}' created.")
+            else:
+                app.logger.info(f"Admin user '{admin_username}' already exists.")
+        else:
+            app.logger.warning("ADMIN_USERNAME or ADMIN_PASSWORD environment variables not set.  Admin user not created.")
+
+    except OperationalError as e:
+        app.logger.error(f"Database initialization error: {e}")
+        print(f"Database initialization error: {e}")  # Wypisz do konsoli w razie problemów z loggerem na początku
+
+
 # --- Dekorator Autoryzacji ---
 def login_required(f):
     @wraps(f)
@@ -331,7 +330,7 @@ def login_required(f):
 
 @app.route('/login', methods=['GET'])
 def login_page():
-    return render_template('index1.html')  # Użyj index1.html (bez sekcji logowania dla modułu)
+    return render_template('index1.html')
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -373,7 +372,7 @@ def add_client():
             create_client(name)
         except Exception as e:
             app.logger.error(f"Error adding client: {e}")
-            return render_template("error.html", error="Błąd podczas dodawania klienta.")  # Użyj error.html
+            return render_template("error.html", error="Błąd podczas dodawania klienta.")
     return redirect(url_for('orders'))
 
 @app.route('/delete_client/<int:client_id>', methods=['POST'])
@@ -516,7 +515,7 @@ def change_password():
                 success = change_user_password(session['user'], new_password)
                 if success:
                     flash("Hasło zostało zmienione.", "success")
-                    return redirect(url_for('orders')) #lub innej strony
+                    return redirect(url_for('orders'))
                 else:
                     flash("Nie udało się zmienić hasła.", "error")
             except Exception as e:
