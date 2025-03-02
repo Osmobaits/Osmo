@@ -270,6 +270,19 @@ def create_user(username, password):
         app.logger.error(f"Error creating user: {e}")
         raise
 
+# data_access.py (lub app.py, jeśli nie masz osobnego pliku)
+def create_user(username, password):
+    try:
+        new_user = User(username=username)
+        new_user.set_password(password)
+        db.session.add(new_user)
+        db.session.commit()
+        return new_user
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        current_app.logger.error(f"Error creating user: {e}")  # Użyj current_app.logger
+        raise
+
 def get_user_by_username(username):
     try:
         return User.query.filter_by(username=username).first()
@@ -490,6 +503,42 @@ def update_invoice_number(order_id):
     if order_id is None:
         return jsonify({'success': False, 'error': 'Could not update invoice number'}), 500
     return redirect(url_for('order_details', order_id=order_id))
+
+@app.route('/add_user', methods=['GET', 'POST'])
+@login_required
+def add_user():
+    # Sprawdź, czy zalogowany użytkownik to admin (tymczasowo - później to zmienimy)
+    if session.get('user') != os.environ.get("ADMIN_USERNAME"):
+        flash("Nie masz uprawnień do dodawania użytkowników.", "error")
+        return redirect(url_for('orders'))  # Przekieruj, jeśli nie admin
+
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
+
+        if not username or not password or not confirm_password:
+            flash("Wszystkie pola są wymagane.", "error")
+            return render_template('add_user.html')
+
+        if password != confirm_password:
+            flash("Hasła nie są identyczne.", "error")
+            return render_template('add_user.html')
+
+        try:
+            existing_user = get_user_by_username(username)
+            if existing_user:
+                flash("Użytkownik o podanej nazwie już istnieje.", "error")
+                return render_template('add_user.html')
+
+            create_user(username, password)
+            flash(f"Użytkownik '{username}' został dodany.", "success")
+            return redirect(url_for('orders')) #lub innej strony np lista uzytkowników
+        except Exception as e:
+            app.logger.error(f"Error adding user: {e}")
+            flash("Wystąpił błąd podczas dodawania użytkownika.", "error")
+
+    return render_template('add_user.html')
 
 @app.route('/delete_archived_order/<int:order_id>', methods=['POST'])
 @login_required
