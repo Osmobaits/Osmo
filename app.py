@@ -1,38 +1,36 @@
-from flask import Flask, request, render_template, redirect, url_for, session, jsonify
+from flask import Flask, request, render_template, redirect, url_for, session, jsonify, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import os
 from functools import wraps
 from flask_bcrypt import Bcrypt
-from sqlalchemy.exc import SQLAlchemyError
-import logging  # Dodaj import modułu logging
+from sqlalchemy.exc import SQLAlchemyError, OperationalError  # Importuj potrzebne wyjątki
+import logging
 
-
-# Inicjalizacja aplikacji Flask
+# --- Inicjalizacja Aplikacji Flask ---
 app = Flask(__name__, template_folder="templates")
 
-# Konfiguracja logowania (do pliku app.log) - NAJWAŻNIEJSZE!
+# --- Konfiguracja Logowania ---
 app.logger.setLevel(logging.INFO)  # Ustaw poziom logowania (INFO, DEBUG, WARNING, ERROR, CRITICAL)
 handler = logging.FileHandler('app.log')  # Zapisuj logi do pliku app.log
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s') # Format logów
 handler.setFormatter(formatter)
 app.logger.addHandler(handler)
 
-
-# Reszta konfiguracji aplikacji (secret_key, database URI, itp.)
+# --- Konfiguracja Aplikacji ---
 app.secret_key = os.environ.get('SECRET_KEY')
 if not app.secret_key:
     import secrets
     app.secret_key = secrets.token_urlsafe(32)
-    app.logger.warning("WARNING: SECRET_KEY not found in environment.  Using a randomly generated key.  This is INSECURE for production!") # Loguj ostrzeżenie
+    app.logger.warning("WARNING: SECRET_KEY not found in environment. Using randomly generated key. INSECURE!")
 
-app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://magazyn_user:FH1mT4UHJvVrqmXXfQz6koc6FnVB3szQ@dpg-cuovb9ggph6c73dqpvc0-a/magazyn"
+app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://magazyn_user:FH1mT4UHJvVrqmXXfQz6koc6FnVB3szQ@dpg-cuovb9ggph6c73dqpvc0-a/magazyn" # Twoje URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 
-# Modele (Client, Order, ClientProduct, OrderProduct)
+# --- Modele ---
 class Client(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -61,9 +59,7 @@ class OrderProduct(db.Model):
     quantity_packed = db.Column(db.Integer, nullable=False, default=0)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
 
-# app.py (gdzieś w sekcji z modelami, np. po OrderProduct)
-
-class User(db.Model):
+class User(db.Model):  # Dodaj model User
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
@@ -74,49 +70,40 @@ class User(db.Model):
     def check_password(self, password):
         return bcrypt.check_password_hash(self.password_hash, password)
 
-# Tworzenie bazy danych
+
+# --- Inicjalizacja Bazy Danych i Tworzenie Użytkownika ---
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+        app.logger.info("Database tables created successfully.")
+
+        # Sprawdź, czy użytkownik admin już istnieje (na podstawie zmiennych środowiskowych)
+        admin_username = os.environ.get('ADMIN_USERNAME')
+        admin_password = os.environ.get('ADMIN_PASSWORD')
+
+        if admin_username and admin_password:
+            existing_user = get_user_by_username(admin_username) #używamy funkcji
+            if not existing_user:
+                create_user(admin_username, admin_password) #używamy funkcji
+                app.logger.info(f"Admin user '{admin_username}' created.")
+            else:
+                app.logger.info(f"Admin user '{admin_username}' already exists.")
+        else:
+            app.logger.warning("ADMIN_USERNAME or ADMIN_PASSWORD environment variables not set.  Admin user not created.")
+
+    except OperationalError as e:
+        app.logger.error(f"Database initialization error: {e}")
+        print(f"Database initialization error: {e}")  # Wypisz do konsoli w razie problemów z loggerem
 
 
-# Logowanie (tymczasowe, do przeniesienia do bazy)
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "magazyn12"
+# --- Funkcje Pomocnicze (Data Access - tymczasowo w app.py) ---
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return redirect(url_for('login_page'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-# app.py (zmień istniejącą funkcję login)
-
-@app.route('/login', methods=['POST'])  # Nie potrzebujesz GET, bo formularz jest w index1.html
-def login():
-    data = request.json
-    user = get_user_by_username(data.get("username"))  # Pobierz użytkownika z bazy!
-
-    if user and user.check_password(data.get("password")):  # Sprawdź hasło!
-        session["user"] = user.username
-        return jsonify({"redirect": url_for("orders"), "message": "Login successful"})
-
-    return jsonify({"message": "Invalid credentials"}), 401
-
-@app.route('/logout', methods=['GET'])
-def logout():
-    session.clear()
-    return redirect(url_for('login_page'))
-
-
-# Funkcje data access (w app.py, bo nie masz osobnego pliku)
 def has_active_order(client_id):
     try:
         return Order.query.filter_by(client_id=client_id, is_archived=False).first() is not None
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error checking for active orders for client {client_id}: {e}") # Logowanie
+        app.logger.error(f"Error checking for active orders for client {client_id}: {e}")
         return False
 
 def get_all_clients():
@@ -124,7 +111,7 @@ def get_all_clients():
         return Client.query.all()
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error getting all clients: {e}") # Logowanie
+        app.logger.error(f"Error getting all clients: {e}")
         raise
 
 def get_active_orders():
@@ -132,7 +119,7 @@ def get_active_orders():
         return Order.query.filter_by(is_archived=False).all()
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error getting active orders: {e}")  # Logowanie
+        app.logger.error(f"Error getting active orders: {e}")
         raise
 
 def create_client(name):
@@ -143,7 +130,7 @@ def create_client(name):
         return new_client
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error creating client: {e}")  # Logowanie
+        app.logger.error(f"Error creating client: {e}")
         raise
 
 def delete_client(client_id):
@@ -153,7 +140,7 @@ def delete_client(client_id):
         db.session.commit()
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error deleting client: {e}")  # Logowanie
+        app.logger.error(f"Error deleting client: {e}")
         raise
 
 def get_client_by_id(client_id):
@@ -161,7 +148,7 @@ def get_client_by_id(client_id):
         return Client.query.get_or_404(client_id)
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error getting client by ID: {e}")  # Logowanie
+        app.logger.error(f"Error getting client by ID: {e}")
         raise
 
 def create_order(client_id, order_date):
@@ -172,7 +159,7 @@ def create_order(client_id, order_date):
         return new_order
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error creating order: {e}")  # Logowanie
+        app.logger.error(f"Error creating order: {e}")
         raise
 
 def add_products_to_order(order, client):
@@ -189,7 +176,7 @@ def add_products_to_order(order, client):
         db.session.commit()
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error adding products to order: {e}")  # Logowanie
+        app.logger.error(f"Error adding products to order: {e}")
         raise
 
 def get_order_by_id(order_id):
@@ -197,7 +184,7 @@ def get_order_by_id(order_id):
         return Order.query.get_or_404(order_id)
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error getting order by ID: {e}") # Logowanie
+        app.logger.error(f"Error getting order by ID: {e}")
         raise
 
 def create_client_product(client_id, product_name):
@@ -208,7 +195,7 @@ def create_client_product(client_id, product_name):
         return new_product
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error creating client product: {e}")  # Logowanie
+        app.logger.error(f"Error creating client product: {e}")
         raise
 
 def delete_client_product(product_id):
@@ -219,7 +206,7 @@ def delete_client_product(product_id):
         return product.client_id
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error deleting client product: {e}")  # Logowanie
+        app.logger.error(f"Error deleting client product: {e}")
         raise
 
 def update_order_product_quantity(product_id, quantity_ordered=None, quantity_packed=None, wykulaned=None):
@@ -235,7 +222,7 @@ def update_order_product_quantity(product_id, quantity_ordered=None, quantity_pa
         return True
     except (SQLAlchemyError, ValueError, TypeError) as e:
         db.session.rollback()
-        app.logger.error(f"Error updating order product quantity: {e}")  # Logowanie
+        app.logger.error(f"Error updating order product quantity: {e}")
         return False
 
 def delete_order_product(product_id):
@@ -247,7 +234,7 @@ def delete_order_product(product_id):
         return order_id
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error deleting order product: {e}")  # Logowanie
+        app.logger.error(f"Error deleting order product: {e}")
         raise
 
 def update_shipment_date(order_id, shipment_date_str):
@@ -258,7 +245,7 @@ def update_shipment_date(order_id, shipment_date_str):
         return order_id
     except (SQLAlchemyError, ValueError) as e:
         db.session.rollback()
-        app.logger.error(f"Error updating shipment date: {e}")  # Logowanie
+        app.logger.error(f"Error updating shipment date: {e}")
         return None
 
 def complete_order(order_id):
@@ -269,7 +256,7 @@ def complete_order(order_id):
         return True
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error completing order: {e}")  # Logowanie
+        app.logger.error(f"Error completing order: {e}")
         return False
 
 def update_invoice_number(order_id, invoice_number):
@@ -280,33 +267,33 @@ def update_invoice_number(order_id, invoice_number):
         return order_id
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error updating invoice number: {e}")  # Logowanie
+        app.logger.error(f"Error updating invoice number: {e}")
         return None
 
 def delete_archived_order(order_id):
     try:
         order = Order.query.get_or_404(order_id)
         client_id = order.client_id
-        app.logger.info(f"Deleting archived order with ID: {order_id}")  # Logowanie!
+        app.logger.info(f"Deleting archived order with ID: {order_id}")
         db.session.delete(order)
         db.session.commit()
-        app.logger.info(f"Archived order with ID: {order_id} deleted successfully (client ID: {client_id})")  # Logowanie!
+        app.logger.info(f"Archived order with ID: {order_id} deleted successfully (client ID: {client_id})")
         return client_id
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error deleting archived order with ID {order_id}: {e}")  # Logowanie!
+        app.logger.error(f"Error deleting archived order with ID {order_id}: {e}")
         raise
 
 def create_user(username, password):
     try:
         new_user = User(username=username)
-        new_user.set_password(password)  # Użyj metody set_password
+        new_user.set_password(password)
         db.session.add(new_user)
         db.session.commit()
         return new_user
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error creating user: {e}")  # Logowanie
+        app.logger.error(f"Error creating user: {e}")
         raise
 
 def get_user_by_username(username):
@@ -314,10 +301,54 @@ def get_user_by_username(username):
         return User.query.filter_by(username=username).first()
     except SQLAlchemyError as e:
         db.session.rollback()
-        app.logger.error(f"Error getting user by username: {e}")  # Logowanie
+        app.logger.error(f"Error getting user by username: {e}")
         raise
 
-# Endpointy
+def change_user_password(username, new_password):
+    try:
+        user = get_user_by_username(username)
+        if user:
+            user.set_password(new_password)
+            db.session.commit()
+            return True
+        else:
+            return False
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        app.logger.error(f"Error changing password for user {username}: {e}")
+        raise
+
+# --- Dekorator Autoryzacji ---
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login_page'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Endpointy ---
+
+@app.route('/login', methods=['GET'])
+def login_page():
+    return render_template('index1.html')  # Użyj index1.html (bez sekcji logowania dla modułu)
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    user = get_user_by_username(data.get("username"))  # Pobierz użytkownika z bazy
+
+    if user and user.check_password(data.get("password")):  # Sprawdź hasło
+        session["user"] = user.username
+        return jsonify({"redirect": url_for("orders"), "message": "Login successful"})
+
+    return jsonify({"message": "Invalid credentials"}), 401
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    session.clear()
+    return redirect(url_for('login_page'))
+
 @app.route('/')
 @login_required
 def home():
@@ -341,8 +372,8 @@ def add_client():
         try:
             create_client(name)
         except Exception as e:
-            app.logger.error(f"Error adding client: {e}") # Logowanie
-            return render_template("error.html", error="Błąd podczas dodawania klienta.")
+            app.logger.error(f"Error adding client: {e}")
+            return render_template("error.html", error="Błąd podczas dodawania klienta.")  # Użyj error.html
     return redirect(url_for('orders'))
 
 @app.route('/delete_client/<int:client_id>', methods=['POST'])
@@ -351,7 +382,7 @@ def delete_client(client_id):
     try:
         delete_client(client_id)
     except Exception as e:
-        app.logger.error(f"Error deleting client: {e}") # Logowanie
+        app.logger.error(f"Error deleting client: {e}")
         return render_template("error.html", error="Błąd podczas usuwania klienta.")
     return redirect(url_for('orders'))
 
@@ -359,12 +390,12 @@ def delete_client(client_id):
 @login_required
 def client_details(client_id):
     try:
-        app.logger.info(f"Entering client_details page for client ID: {client_id}")  # Logowanie!
+        app.logger.info(f"Entering client_details page for client ID: {client_id}")
         client = get_client_by_id(client_id)
         archived_orders = Order.query.filter_by(client_id=client.id, is_archived=True).order_by(Order.order_date.desc()).all()
         return render_template('client_details.html', client=client, archived_orders=archived_orders)
     except Exception as e:
-        app.logger.error(f"Error getting client details: {e}")  # Logowanie!
+        app.logger.error(f"Error getting client details: {e}")
         return render_template("error.html", error="Błąd podczas pobierania szczegółów klienta.")
 
 @app.route('/add_order/<int:client_id>', methods=['POST'])
@@ -378,7 +409,7 @@ def add_order(client_id):
         add_products_to_order(new_order, client)
         return redirect(url_for('order_details', order_id=new_order.id))
     except Exception as e:
-        app.logger.error(f"Error adding order: {e}")  # Logowanie
+        app.logger.error(f"Error adding order: {e}")
         return render_template("error.html", error="Błąd podczas dodawania zamówienia.")
 
 @app.route('/order/<int:order_id>')
@@ -388,7 +419,7 @@ def order_details(order_id):
         order = get_order_by_id(order_id)
         return render_template('order_details.html', order=order)
     except Exception as e:
-        app.logger.error(f"Error getting order details: {e}")  # Logowanie
+        app.logger.error(f"Error getting order details: {e}")
         return render_template("error.html", error="Błąd podczas pobierania szczegółów zamówienia.")
 
 @app.route('/add_product/<int:client_id>', methods=['POST'])
@@ -400,7 +431,7 @@ def add_product(client_id):
             create_client_product(client_id, product_name)
         return redirect(url_for('client_details', client_id=client_id))
     except Exception as e:
-        app.logger.error(f"Error adding product: {e}")  # Logowanie
+        app.logger.error(f"Error adding product: {e}")
         return render_template("error.html", error="Błąd podczas dodawania produktu.")
 
 @app.route('/delete_client_product/<int:product_id>', methods=['POST'])
@@ -410,7 +441,7 @@ def delete_client_product(product_id):
         client_id = delete_client_product(product_id)
         return redirect(url_for('client_details', client_id=client_id))
     except Exception as e:
-        app.logger.error(f"Error deleting client product: {e}")  # Logowanie
+        app.logger.error(f"Error deleting client product: {e}")
         return render_template("error.html", error="Błąd podczas usuwania produktu.")
 
 @app.route('/update_product_quantity/<int:product_id>', methods=['POST'])
@@ -432,7 +463,7 @@ def delete_order_product(product_id):
         order_id = delete_order_product(product_id)
         return redirect(url_for('order_details', order_id=order_id))
     except Exception as e:
-        app.logger.error(f"Error deleting order product: {e}")  # Logowanie
+        app.logger.error(f"Error deleting order product: {e}")
         return render_template("error.html", error="Błąd podczas usuwania produktu z zamówienia.")
 
 @app.route('/update_shipment_date/<int:order_id>', methods=['POST'])
@@ -461,18 +492,40 @@ def update_invoice_number(order_id):
         return jsonify({'success': False, 'error': 'Could not update invoice number'}), 500
     return redirect(url_for('order_details', order_id=order_id))
 
-
 @app.route('/delete_archived_order/<int:order_id>', methods=['POST'])
 @login_required
-def delete_archived_order_route(order_id):  # Zmień nazwę, żeby nie kolidowała z funkcją
+def delete_archived_order_route(order_id):  # Zmieniona nazwa endpointu
     try:
-        app.logger.info(f"Received request to delete archived order with ID: {order_id}")  # Logowanie!
+        app.logger.info(f"Received request to delete archived order with ID: {order_id}")
         client_id = delete_archived_order(order_id)
-        app.logger.info(f"Redirecting to client details page (client ID: {client_id})")  # Logowanie!
+        app.logger.info(f"Redirecting to client details page (client ID: {client_id})")
         return redirect(url_for('client_details', client_id=client_id))
     except Exception as e:
-        app.logger.error(f"Error deleting archived order: {e}")  # Logowanie!
-        return render_template('error.html', error="Błąd podczas usuwania zarchiwizowanego zamówienia")
+        app.logger.error(f"Error deleting archived order: {e}")
+        return render_template("error.html", error="Błąd podczas usuwania zarchiwizowanego zamówienia.")
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if new_password == confirm_password:
+            try:
+                success = change_user_password(session['user'], new_password)
+                if success:
+                    flash("Hasło zostało zmienione.", "success")
+                    return redirect(url_for('orders')) #lub innej strony
+                else:
+                    flash("Nie udało się zmienić hasła.", "error")
+            except Exception as e:
+                app.logger.error(f"Error changing password: {e}")
+                flash("Wystąpił błąd podczas zmiany hasła.", "error")
+        else:
+            flash("Hasła nie są identyczne.", "error")
+
+    return render_template('change_password.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
