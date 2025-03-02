@@ -71,6 +71,10 @@
                 <div class="nav-buttons">
                     <a href="{{ url_for('logout') }}" class="btn btn-danger">Wyloguj</a>
                      <a href="{{ url_for('change_password') }}" class="btn btn-warning">Zmień Hasło</a>
+                     <!-- index1.html (lub inna strona) -->
+ {% if session.get('user') == os.environ.get("ADMIN_USERNAME") %}
+     <a href="{{ url_for('add_user') }}" class = "btn btn-success">Dodaj użytkownika</a>
+ {% endif %}
                 </div>
             </div>
 
