@@ -22,7 +22,7 @@ app.secret_key = os.environ.get('SECRET_KEY')
 if not app.secret_key:
     import secrets
     app.secret_key = secrets.token_urlsafe(32)
-    app.logger.warning("WARNING: SECRET_KEY not found in environment.  Using randomly generated key.  INSECURE!")
+    app.logger.warning("WARNING: SECRET_KEY not found in environment. Using randomly generated key. INSECURE!")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = "postgresql://magazyn_user:FH1mT4UHJvVrqmXXfQz6koc6FnVB3szQ@dpg-cuovb9ggph6c73dqpvc0-a/magazyn"  # Twoje URI
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -270,19 +270,6 @@ def create_user(username, password):
         app.logger.error(f"Error creating user: {e}")
         raise
 
-# data_access.py (lub app.py, jeśli nie masz osobnego pliku)
-def create_user(username, password):
-    try:
-        new_user = User(username=username)
-        new_user.set_password(password)
-        db.session.add(new_user)
-        db.session.commit()
-        return new_user
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        current_app.logger.error(f"Error creating user: {e}")  # Użyj current_app.logger
-        raise
-
 def get_user_by_username(username):
     try:
         return User.query.filter_by(username=username).first()
@@ -378,7 +365,7 @@ def orders():
     # Pobierz ADMIN_USERNAME i przekaż do szablonu:
     admin_username = os.environ.get("ADMIN_USERNAME")
     return render_template('index1.html', clients=clients, active_orders=active_orders,
-                           client_has_active_order=client_has_active_order, admin_username=admin_username)
+                           client_has_active_order=client_has_active_order, admin_username=admin_username) #przekazujemy zmienna
 
 @app.route('/add_client', methods=['POST'])
 @login_required
@@ -508,6 +495,41 @@ def update_invoice_number(order_id):
         return jsonify({'success': False, 'error': 'Could not update invoice number'}), 500
     return redirect(url_for('order_details', order_id=order_id))
 
+@app.route('/delete_archived_order/<int:order_id>', methods=['POST'])
+@login_required
+def delete_archived_order_route(order_id):  # Zmieniona nazwa endpointu
+    try:
+        app.logger.info(f"Received request to delete archived order with ID: {order_id}")
+        client_id = delete_archived_order(order_id)
+        app.logger.info(f"Redirecting to client details page (client ID: {client_id})")
+        return redirect(url_for('client_details', client_id=client_id))
+    except Exception as e:
+        app.logger.error(f"Error deleting archived order: {e}")
+        return render_template("error.html", error="Błąd podczas usuwania zarchiwizowanego zamówienia.")
+
+@app.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    if request.method == 'POST':
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+
+        if new_password == confirm_password:
+            try:
+                success = change_user_password(session['user'], new_password)
+                if success:
+                    flash("Hasło zostało zmienione.", "success")
+                    return redirect(url_for('orders'))
+                else:
+                    flash("Nie udało się zmienić hasła.", "error")
+            except Exception as e:
+                app.logger.error(f"Error changing password: {e}")
+                flash("Wystąpił błąd podczas zmiany hasła.", "error")
+        else:
+            flash("Hasła nie są identyczne.", "error")
+
+    return render_template('change_password.html')
+
 @app.route('/add_user', methods=['GET', 'POST'])
 @login_required
 def add_user():
@@ -543,41 +565,6 @@ def add_user():
             flash("Wystąpił błąd podczas dodawania użytkownika.", "error")
 
     return render_template('add_user.html')
-
-@app.route('/delete_archived_order/<int:order_id>', methods=['POST'])
-@login_required
-def delete_archived_order_route(order_id):  # Zmieniona nazwa endpointu
-    try:
-        app.logger.info(f"Received request to delete archived order with ID: {order_id}")
-        client_id = delete_archived_order(order_id)
-        app.logger.info(f"Redirecting to client details page (client ID: {client_id})")
-        return redirect(url_for('client_details', client_id=client_id))
-    except Exception as e:
-        app.logger.error(f"Error deleting archived order: {e}")
-        return render_template("error.html", error="Błąd podczas usuwania zarchiwizowanego zamówienia.")
-
-@app.route('/change_password', methods=['GET', 'POST'])
-@login_required
-def change_password():
-    if request.method == 'POST':
-        new_password = request.form.get('new_password')
-        confirm_password = request.form.get('confirm_password')
-
-        if new_password == confirm_password:
-            try:
-                success = change_user_password(session['user'], new_password)
-                if success:
-                    flash("Hasło zostało zmienione.", "success")
-                    return redirect(url_for('orders'))
-                else:
-                    flash("Nie udało się zmienić hasła.", "error")
-            except Exception as e:
-                app.logger.error(f"Error changing password: {e}")
-                flash("Wystąpił błąd podczas zmiany hasła.", "error")
-        else:
-            flash("Hasła nie są identyczne.", "error")
-
-    return render_template('change_password.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
