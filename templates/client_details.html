@@ -70,9 +70,9 @@
                                 {% endif %}
                             </div>
                             <div>
-                                <form method="post" action="{{ url_for('delete_archived_order', order_id=order.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć to zamówienie?');">
-                                    <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
-                                </form>
+                                <form method="post" action="{{ url_for('delete_archived_order_route', order_id=order.id) }}" class="d-inline" onsubmit="return confirm('Czy na pewno chcesz usunąć to zamówienie?');">
+    <button type="submit" class="btn btn-danger btn-sm">Usuń</button>
+</form>
                             </div>
                         </li>
                     {% endfor %}
