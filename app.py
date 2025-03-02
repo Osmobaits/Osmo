@@ -155,7 +155,10 @@ def add_products_to_order(order, client):
 
 def get_order_by_id(order_id):
     try:
-        return Order.query.get_or_404(order_id)
+        order = Order.query.get_or_404(order_id)
+        # Jawne sortowanie produktów po ID (rosnąco):
+        order.products.sort(key=lambda p: p.id)
+        return order
     except SQLAlchemyError as e:
         db.session.rollback()
         app.logger.error(f"Error getting order by ID: {e}")
