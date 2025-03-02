@@ -61,6 +61,18 @@ class OrderProduct(db.Model):
     quantity_packed = db.Column(db.Integer, nullable=False, default=0)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
 
+# app.py (gdzieś w sekcji z modelami, np. po OrderProduct)
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    def check_password(self, password):
+        return bcrypt.check_password_hash(self.password_hash, password)
 
 # Tworzenie bazy danych
 with app.app_context():
@@ -79,19 +91,15 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.route('/login', methods=['GET'])
-def login_page():
-    return render_template('index1.html')
+# app.py (zmień istniejącą funkcję login)
 
-@app.route('/login', methods=['POST'])
+@app.route('/login', methods=['POST'])  # Nie potrzebujesz GET, bo formularz jest w index1.html
 def login():
     data = request.json
-    user = None
-    if data.get("username") == ADMIN_USERNAME:
-        user = {"username": ADMIN_USERNAME, "password": bcrypt.generate_password_hash(ADMIN_PASSWORD).decode('utf-8')}
+    user = get_user_by_username(data.get("username"))  # Pobierz użytkownika z bazy!
 
-    if user and bcrypt.check_password_hash(user["password"], data.get("password")):
-        session["user"] = user["username"]
+    if user and user.check_password(data.get("password")):  # Sprawdź hasło!
+        session["user"] = user.username
         return jsonify({"redirect": url_for("orders"), "message": "Login successful"})
 
     return jsonify({"message": "Invalid credentials"}), 401
@@ -289,6 +297,25 @@ def delete_archived_order(order_id):
         app.logger.error(f"Error deleting archived order with ID {order_id}: {e}")  # Logowanie!
         raise
 
+def create_user(username, password):
+    try:
+        new_user = User(username=username)
+        new_user.set_password(password)  # Użyj metody set_password
+        db.session.add(new_user)
+        db.session.commit()
+        return new_user
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        app.logger.error(f"Error creating user: {e}")  # Logowanie
+        raise
+
+def get_user_by_username(username):
+    try:
+        return User.query.filter_by(username=username).first()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        app.logger.error(f"Error getting user by username: {e}")  # Logowanie
+        raise
 
 # Endpointy
 @app.route('/')
