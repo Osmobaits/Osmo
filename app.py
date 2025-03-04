@@ -365,10 +365,17 @@ def orders():
     for client in clients:
         client_has_active_order[client.id] = has_active_order(client.id)
 
-    # Pobierz ADMIN_USERNAME i przekaż do szablonu:
+    # Pobierz zamówienia zakończone (archiwalne) bez faktury:
+    orders_to_invoice = Order.query.filter_by(is_archived=True, invoice_number=None).all()
+    # LUB, jeśli puste stringi też mają być traktowane jako brak faktury:
+    # orders_to_invoice = Order.query.filter(Order.is_archived == True,
+    #                                        or_(Order.invoice_number == None,
+    #                                        Order.invoice_number == "")).all()
+
     admin_username = os.environ.get("ADMIN_USERNAME")
     return render_template('index1.html', clients=clients, active_orders=active_orders,
-                           client_has_active_order=client_has_active_order, admin_username=admin_username) #przekazujemy zmienna
+                           client_has_active_order=client_has_active_order,
+                           admin_username=admin_username, orders_to_invoice=orders_to_invoice) # Przekaż listę
 
 @app.route('/add_client', methods=['POST'])
 @login_required
