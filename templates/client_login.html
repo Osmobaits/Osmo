@@ -1,0 +1,65 @@
+<!-- templates/client_login.html -->
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Logowanie Klienta</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+         body{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+          }
+          .container{
+            width: 400px;
+          }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Logowanie Klienta</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    <form id = "clientLoginForm">
+        <div class="form-group">
+            <label for="username">Nazwa użytkownika:</label>
+            <input type="text" class="form-control" id="username" name="username" required>
+        </div>
+        <div class="form-group">
+            <label for="password">Hasło:</label>
+            <input type="password" class="form-control" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Zaloguj</button>
+    </form>
+</div>
+<script>
+   document.getElementById('clientLoginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        fetch('/client_login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.redirect) {
+                window.location.href = data.redirect;  // Przekieruj po udanym logowaniu
+            } else {
+                alert("Login failed: " + data.message);  // Wyświetl błąd logowania
+            }
+        });
+    });
+</script>
+</body>
+</html>
