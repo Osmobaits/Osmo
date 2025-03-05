@@ -36,15 +36,6 @@ class Client(db.Model):
     name = db.Column(db.String(100), nullable=False)
     orders = db.relationship('Order', backref='client', lazy=True, cascade="all, delete-orphan")
     products = db.relationship('ClientProduct', backref='client', lazy=True, cascade="all, delete-orphan")
-    username = db.Column(db.String(80), unique=True, nullable=False)  # Unikalna nazwa użytkownika
-    password_hash = db.Column(db.String(128), nullable=False)
-    is_admin = db.Column(db.Boolean, default=False) #pole informujące czy klient jest adminem
-
-    def set_password(self, password):
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
-
-    def check_password(self, password):
-        return bcrypt.check_password_hash(self.password_hash, password)
 
 class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -68,7 +59,7 @@ class OrderProduct(db.Model):
     quantity_packed = db.Column(db.Integer, nullable=False, default=0)
     order_id = db.Column(db.Integer, db.ForeignKey('order.id'), nullable=False)
 
-class User(db.Model):  #  Model User dla administratora
+class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
@@ -105,15 +96,9 @@ def get_active_orders():
         app.logger.error(f"Error getting active orders: {e}")
         raise
 
-def create_client(name, username, password):  # Dodaj username i password
+def create_client(name):
     try:
-        # Sprawdź, czy użytkownik o takiej nazwie już istnieje:
-        existing_client = get_client_by_username(username)  # Użyj nowej funkcji
-        if existing_client:
-            raise ValueError(f"Użytkownik o nazwie '{username}' już istnieje.")
-
-        new_client = Client(name=name, username=username)  # Dodaj username
-        new_client.set_password(password)  # Ustaw hasło (haszowanie)
+        new_client = Client(name=name)
         db.session.add(new_client)
         db.session.commit()
         return new_client
@@ -122,19 +107,9 @@ def create_client(name, username, password):  # Dodaj username i password
         app.logger.error(f"Error creating client: {e}")
         raise
 
-def get_client_by_username(username):  # Nowa funkcja!
-    try:
-        return Client.query.filter_by(username=username).first()
-    except SQLAlchemyError as e:
-        db.session.rollback()
-        app.logger.error(f"Error getting client by username: {e}")
-        raise
-
 def delete_client(client_id):
     try:
         client = Client.query.get_or_404(client_id)
-        if client.is_admin:
-            raise ValueError("Nie można usunąć konta administratora.")
         db.session.delete(client)
         db.session.commit()
     except SQLAlchemyError as e:
@@ -349,7 +324,7 @@ with app.app_context():
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user' not in session and "client_user" not in session:
+        if 'user' not in session:
             return redirect(url_for('login_page'))
         return f(*args, **kwargs)
     return decorated_function
@@ -390,37 +365,28 @@ def orders():
     for client in clients:
         client_has_active_order[client.id] = has_active_order(client.id)
 
-    # Pobierz ADMIN_USERNAME i przekaż do szablonu:
-    admin_username = os.environ.get("ADMIN_USERNAME")
-    #Pobieranie zamówień do faktury
+    # Pobierz zamówienia zakończone (archiwalne) bez faktury:
     orders_to_invoice = Order.query.filter_by(is_archived=True, invoice_number=None).all()
+    # LUB, jeśli puste stringi też mają być traktowane jako brak faktury:
+    # orders_to_invoice = Order.query.filter(Order.is_archived == True,
+    #                                        or_(Order.invoice_number == None,
+    #                                        Order.invoice_number == "")).all()
+
+    admin_username = os.environ.get("ADMIN_USERNAME")
     return render_template('index1.html', clients=clients, active_orders=active_orders,
-                           client_has_active_order=client_has_active_order, admin_username=admin_username, orders_to_invoice=orders_to_invoice) #przekazujemy zmienna
+                           client_has_active_order=client_has_active_order,
+                           admin_username=admin_username, orders_to_invoice=orders_to_invoice) # Przekaż listę
 
 @app.route('/add_client', methods=['POST'])
 @login_required
 def add_client():
     name = request.form.get('name')
-    username = request.form.get('username')  # Dodaj pobieranie username
-    password = request.form.get('password')  # Dodaj pobieranie password
-    confirm_password = request.form.get('confirm_password')
-
-    if not all([name, username, password, confirm_password]):
-        flash("Wszystkie pola są wymagane.", "error")
-        return redirect(url_for('orders'))
-
-    if password != confirm_password:
-        flash("Hasła nie są identyczne.", "error")
-        return redirect(url_for('orders'))
-
-    try:
-        create_client(name, username, password)  # Użyj zmodyfikowanej funkcji
-        flash(f"Klient '{name}' został dodany.", "success")
-    except ValueError as e:  # Obsłuż błąd unikalności username
-        flash(str(e), "error")
-    except Exception as e:
-        app.logger.error(f"Error adding client: {e}")
-        flash("Błąd podczas dodawania klienta.", "error")
+    if name:
+        try:
+            create_client(name)
+        except Exception as e:
+            app.logger.error(f"Error adding client: {e}")
+            return render_template("error.html", error="Błąd podczas dodawania klienta.")
     return redirect(url_for('orders'))
 
 @app.route('/delete_client/<int:client_id>', methods=['POST'])
@@ -428,12 +394,9 @@ def add_client():
 def delete_client(client_id):
     try:
         delete_client(client_id)
-        flash("Klient został usunięty.", "success")
-    except ValueError as e:
-        flash(str(e), "error") # wyświetl błąd
     except Exception as e:
         app.logger.error(f"Error deleting client: {e}")
-        flash("Błąd podczas usuwania klienta.", "error")
+        return render_template("error.html", error="Błąd podczas usuwania klienta.")
     return redirect(url_for('orders'))
 
 @app.route('/client/<int:client_id>')
@@ -612,96 +575,6 @@ def add_user():
             flash("Wystąpił błąd podczas dodawania użytkownika.", "error")
 
     return render_template('add_user.html')
-
-# Endpoint logowania dla klientów
-@app.route('/client_login', methods=['GET', 'POST'])
-def client_login():
-    if request.method == 'POST':
-        data = request.json #pobieramy dane
-        username = data.get("username")
-        password = data.get("password")
-
-        client = get_client_by_username(username) #pobieramy klienta
-
-        if client and client.check_password(password): #sprawdzamy haslo
-            session["client_user"] = client.username #zapis do sesji
-            #tutaj przekierowanie
-            return jsonify({"redirect": url_for("client_dashboard"), "message": "Login successful"}) #Przekierowanie do panelu klienta
-
-        return jsonify({"message": "Invalid credentials"}), 401
-
-    return render_template('client_login.html') # Stwórz ten szablon!
-
-@app.route('/client_logout')
-def client_logout():
-    session.pop('client_user', None)  # Usuń 'client_user' z sesji
-    return redirect(url_for('home'))  # Przekieruj na stronę główną (lub inną)
-
-@app.route('/client_dashboard')
-@login_required
-def client_dashboard():
-    # Pobierz dane klienta (na podstawie sesji)
-    client = get_client_by_username(session['client_user'])
-    if client is None: #zabezpieczenie
-        return redirect(url_for("client_login"))
-
-    # Możesz tutaj pobrać inne dane, np. historię zamówień klienta
-    # client_orders = ...
-
-    return render_template('client_dashboard.html', client=client)
-
-@app.route('/client_new_order', methods=['GET', 'POST'])
-@login_required  # Upewnij się, że tylko zalogowani klienci mogą składać zamówienia
-def client_new_order():
-  client = get_client_by_username(session["client_user"])
-
-  if client is None:
-      return redirect(url_for("client_login"))
-
-  if request.method == 'POST':
-      order_date_str = request.form.get('order_date')
-      order_date = datetime.strptime(order_date_str, '%Y-%m-%d').date() if order_date_str else None
-
-      try:
-          new_order = create_order(client.id, order_date)
-          # Pobierz wszystkie produkty klienta
-          for product in client.products:
-              quantity_key = f"product_{product.id}"
-              quantity = request.form.get(quantity_key, type=int, default=0)  # Pobierz ilość, domyślnie 0
-
-              if quantity > 0:
-                  order_product = OrderProduct(
-                      name=product.name,
-                      quantity_ordered=quantity,
-                      order_id=new_order.id
-                  )
-                  db.session.add(order_product)
-          db.session.commit() #zapis do bazy
-          flash('Zamówienie zostało złożone!', 'success')
-          return redirect(url_for('client_dashboard'))
-
-      except Exception as e:
-          app.logger.error(f"Error create order for client: {e}")
-          flash("Błąd przy składaniu zamówienia", "error")
-          db.session.rollback()
-
-  return render_template('client_new_order.html', client=client)
-
-@app.route('/client_products/<int:client_id>')
-@login_required
-def client_products(client_id):
-  try:
-      client = get_client_by_id(client_id) #pobieramy klienta po id
-      products = [{"id": product.id, "name": product.name} for product in client.products] #tworzymy listę słowników
-      return jsonify(products) #zwracamy json
-  except Exception as e:
-      app.logger.error(f"Error client product: {e}")
-      return jsonify({'success': False, 'error': str(e)}), 400
-
-@app.errorhandler(Exception)
-def handle_exception(e):
-    app.logger.error(f"An error occurred: {e}")
-    return render_template('error.html', error=str(e)), 500
 
 if __name__ == "__main__":
     app.run(debug=True)
