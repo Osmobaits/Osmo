@@ -482,12 +482,20 @@ def delete_order_product(product_id):
 @app.route('/update_shipment_date/<int:order_id>', methods=['POST'])
 @login_required
 def update_shipment_date(order_id):
-    shipment_date_str = request.form.get('shipment_date')
-    order_id = update_shipment_date(order_id, shipment_date_str)
-    if order_id is None:
-        return jsonify({'success': False, 'error': 'Could not update shipment date'}), 500
+    order = Order.query.get_or_404(order_id)
+    try:
+        shipment_date_str = request.form['shipment_date']  # Wymagane pole
+        order.shipment_date = datetime.strptime(shipment_date_str, '%Y-%m-%d').date()
+        db.session.commit()
+        flash("Data wysyłki zaktualizowana", "success")
+    except ValueError:
+        flash("Nieprawidłowy format daty. Użyj formatu RRRR-MM-DD", "error")
+    except Exception as e:
+        db.session.rollback()
+        flash("Błąd podczas aktualizacji daty wysyłki", "error")
+        app.logger.error(f"Błąd: {str(e)}")
+    
     return redirect(url_for('order_details', order_id=order_id))
-
 @app.route('/complete_order/<int:order_id>', methods=['POST'])
 @login_required
 def complete_order(order_id):
@@ -499,10 +507,16 @@ def complete_order(order_id):
 @app.route('/update_invoice_number/<int:order_id>', methods=['POST'])
 @login_required
 def update_invoice_number(order_id):
-    invoice_number = request.form.get('invoice_number')
-    order_id = update_invoice_number(order_id, invoice_number)
-    if order_id is None:
-        return jsonify({'success': False, 'error': 'Could not update invoice number'}), 500
+    order = Order.query.get_or_404(order_id)
+    try:
+        order.invoice_number = request.form['invoice_number']  # Wymagane pole
+        db.session.commit()
+        flash("Numer faktury zaktualizowany", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash("Błąd podczas aktualizacji numeru faktury", "error")
+        app.logger.error(f"Błąd: {str(e)}")
+    
     return redirect(url_for('order_details', order_id=order_id))
 
 @app.route('/delete_archived_order/<int:order_id>', methods=['POST'])
