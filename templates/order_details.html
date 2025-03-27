@@ -30,13 +30,15 @@
                 <h3 class="mb-0">Aktualizuj datę wysyłki</h3>
             </div>
             <div class="card-body">
-                <form method="post" action="{{ url_for('update_shipment_date', order_id=order.id) }}">
-                    <div class="mb-3">
-                        <label class="form-label">Nowa data wysyłki:</label>
-                        <input type="date" name="shipment_date" class="form-control" value="{{ order.shipment_date.strftime('%Y-%m-%d') if order.shipment_date else '' }}">
-                    </div>
-                    <button type="submit" class="btn btn-warning">Zaktualizuj datę</button>
-                </form>
+                <!-- Formularz daty wysyłki -->
+<form method="post" action="{{ url_for('update_shipment_date', order_id=order.id) }}" id="shipmentForm">
+    <div class="mb-3">
+        <label class="form-label">Nowa data wysyłki:</label>
+        <input type="date" name="shipment_date" class="form-control" 
+               value="{{ order.shipment_date.strftime('%Y-%m-%d') if order.shipment_date else '' }}" required>
+    </div>
+    <button type="submit" class="btn btn-warning">Zaktualizuj datę</button>
+</form>
             </div>
         </div>
 
@@ -54,13 +56,15 @@
                     <h3 class="mb-0">Numer faktury</h3>
                 </div>
                 <div class="card-body">
-                    <form method="post" action="{{ url_for('update_invoice_number', order_id=order.id) }}">
-                        <div class="mb-3">
-                            <label class="form-label">Numer faktury:</label>
-                            <input type="text" name="invoice_number" class="form-control" value="{{ order.invoice_number if order.invoice_number else '' }}">
-                        </div>
-                        <button type="submit" class="btn btn-warning">Zaktualizuj numer faktury</button>
-                    </form>
+                    <!-- Formularz numeru faktury -->
+<form method="post" action="{{ url_for('update_invoice_number', order_id=order.id) }}" id="invoiceForm">
+    <div class="mb-3">
+        <label class="form-label">Numer faktury:</label>
+        <input type="text" name="invoice_number" class="form-control" 
+               value="{{ order.invoice_number if order.invoice_number else '' }}" required>
+    </div>
+    <button type="submit" class="btn btn-warning">Zaktualizuj numer faktury</button>
+</form>
                 </div>
             </div>
         {% endif %}
